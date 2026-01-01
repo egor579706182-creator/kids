@@ -379,7 +379,14 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const base64Image = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const key = process.env.API_KEY;
+      
+      // Если ключа нет в окружении браузера, значит деплой еще не обновился
+      if (!key || key.length < 10) {
+        throw new Error("API-ключ не обнаружен. ПОСЛЕ обновления ключа в Vercel Settings обязательно сделайте REDEPLOY во вкладке Deployments!");
+      }
+
+      const ai = new GoogleGenAI({ apiKey: key });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: [
@@ -410,7 +417,11 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       }
     } catch (error: any) {
       console.error("AI Analysis error:", error);
-      setErrorMessage(error.message || "Ошибка API. Проверьте настройки ключа.");
+      let msg = error.message || "Ошибка API.";
+      if (msg.includes("API key not valid") || msg.includes("API_KEY")) {
+        msg = "Ключ не активен. Сделайте REDEPLOY проекта в панели Vercel (вкладка Deployments), чтобы применить новые настройки Environment Variables.";
+      }
+      setErrorMessage(msg);
     } finally {
       setIsAnalyzing(false);
     }
@@ -442,7 +453,7 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         {isAnalyzing && (
           <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-20">
             <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
-            <div className="text-white text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Gemini анализирует...</div>
+            <div className="text-white text-[10px] font-black uppercase tracking-[0.3em] animate-pulse text-center px-4">Анализируем жест...</div>
           </div>
         )}
         
@@ -465,8 +476,9 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
         <div className="bg-white border border-black p-6 text-center shadow-sm">
           {errorMessage && (
-             <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 text-[10px] font-bold uppercase">
-               ⚠️ {errorMessage}
+             <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold uppercase leading-relaxed text-left">
+               <span className="block mb-1">⚠️ ВНИМАНИЕ:</span> 
+               {errorMessage}
              </div>
           )}
           <p className="font-serif italic text-sm mb-4 text-gray-600">Направьте камеру на ладонь и нажмите:</p>
@@ -481,7 +493,7 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           </button>
           {feedback === 'fail' && !isAnalyzing && (
             <p className="mt-4 text-[10px] font-black uppercase text-red-500 tracking-widest">
-              Попробуйте еще раз! Покажите пальцы четче.
+              Попробуйте еще раз! Убедитесь, что ладонь хорошо освещена.
             </p>
           )}
         </div>
