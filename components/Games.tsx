@@ -126,7 +126,7 @@ const CameraGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           onClick={toggleCamera}
           className="text-[10px] font-black uppercase border border-black px-2 py-1 bg-white hover:bg-black hover:text-white transition-all"
         >
-          {facingMode === 'user' ? 'Основная камера' : 'Фронтальная камера'}
+          {facingMode === 'user' ? 'Основная' : 'Селфи'}
         </button>
       </div>
       
@@ -151,7 +151,7 @@ const CameraGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         </div>
 
         <div className="bg-white border border-black p-6 text-center shadow-sm">
-          <p className="font-serif italic text-sm mb-4 text-gray-600">Родитель: нажмите кнопку, когда ребенок выполнит задание</p>
+          <p className="font-serif italic text-sm mb-4 text-gray-600">Родитель: подтвердите выполнение</p>
           <button 
             onClick={triggerSuccess}
             className="w-full bg-[#121212] text-white p-5 font-black uppercase tracking-[0.2em] text-lg hover:bg-black active:scale-[0.98] transition-all"
@@ -285,6 +285,7 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [problem, setProblem] = useState({ text: '1 + 1', answer: 2 });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [feedback, setFeedback] = useState<'success' | 'fail' | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<VideoFacingModeEnum>('user');
 
   const stopStream = () => {
@@ -299,7 +300,10 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       .then(stream => {
         if (videoRef.current) videoRef.current.srcObject = stream;
       })
-      .catch(err => console.error("Camera error:", err));
+      .catch(err => {
+        console.error("Camera error:", err);
+        setErrorMessage("Ошибка доступа к камере. Убедитесь, что дали разрешение.");
+      });
   };
 
   useEffect(() => {
@@ -328,27 +332,30 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     
     setProblem({ text: `${a} ${isAddition ? '+' : '-'} ${b} = ?`, answer });
     setFeedback(null);
+    setErrorMessage(null);
   };
 
   const playFeedbackSound = (type: 'success' | 'fail') => {
-    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    
-    if (type === 'success') {
-      osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); 
-      osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.1); 
-    } else {
-      osc.frequency.setValueAtTime(261.63, audioCtx.currentTime); 
-      osc.frequency.exponentialRampToValueAtTime(130.81, audioCtx.currentTime + 0.2); 
-    }
-    
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.3);
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      if (type === 'success') {
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); 
+        osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.1); 
+      } else {
+        osc.frequency.setValueAtTime(261.63, audioCtx.currentTime); 
+        osc.frequency.exponentialRampToValueAtTime(130.81, audioCtx.currentTime + 0.2); 
+      }
+      
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.3);
+    } catch (e) { console.warn("Audio not supported"); }
   };
 
   const analyzeGesture = async () => {
@@ -356,16 +363,20 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     
     setIsAnalyzing(true);
     setFeedback(null);
+    setErrorMessage(null);
 
     const canvas = canvasRef.current;
     const video = videoRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+        setIsAnalyzing(false);
+        return;
+    }
     
     ctx.drawImage(video, 0, 0);
-    const base64Image = canvas.toDataURL('image/jpeg').split(',')[1];
+    const base64Image = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -374,15 +385,19 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         contents: [
           {
             parts: [
-              { text: "How many fingers are being held up in this image? Only look at one hand. Respond with ONLY the single digit number (1-5). If zero or unclear, respond with 0." },
+              { text: "Сколько пальцев поднято на руке? Рассматривай только одну руку. Ответь ТОЛЬКО одной цифрой (0-5). Если не видишь руку или пальцы, ответь 0." },
               { inlineData: { data: base64Image, mimeType: 'image/jpeg' } }
             ]
           }
         ]
       });
 
-      const aiAnswer = parseInt(response.text?.trim() || '0');
+      const rawText = response.text || '0';
+      const match = rawText.match(/\d/);
+      const aiAnswer = match ? parseInt(match[0]) : 0;
       
+      console.log("AI Answer:", aiAnswer, "Correct:", problem.answer);
+
       if (aiAnswer === problem.answer) {
         setFeedback('success');
         playFeedbackSound('success');
@@ -393,8 +408,9 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         setFeedback('fail');
         playFeedbackSound('fail');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Analysis error:", error);
+      setErrorMessage(error.message || "Ошибка API. Проверьте настройки ключа.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -406,9 +422,9 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         <button onClick={onBack} className="text-[10px] font-black uppercase">← Назад</button>
         <button 
           onClick={toggleCamera}
-          className="text-[10px] font-black uppercase border border-black px-2 py-1 bg-white hover:bg-black hover:text-white transition-all"
+          className="text-[10px] font-black uppercase border border-black px-3 py-1 bg-white hover:bg-black hover:text-white transition-all"
         >
-          {facingMode === 'user' ? 'Основная камера' : 'Фронтальная камера'}
+          {facingMode === 'user' ? 'Основная' : 'Селфи'}
         </button>
       </div>
       
@@ -424,8 +440,9 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         <canvas ref={canvasRef} className="hidden" />
         
         {isAnalyzing && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-20">
-            <div className="text-white text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Анализ AI...</div>
+          <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-20">
+            <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
+            <div className="text-white text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Gemini анализирует...</div>
           </div>
         )}
         
@@ -433,30 +450,38 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           <div className="absolute inset-0 bg-green-500/30 animate-pulse border-8 border-green-500 z-10 pointer-events-none" />
         )}
         {feedback === 'fail' && (
-          <div className="absolute inset-0 bg-red-500/20 border-8 border-red-500 z-10 pointer-events-none" />
+          <div className="absolute inset-0 bg-red-500/20 border-8 border-red-500 z-10 pointer-events-none flex items-center justify-center">
+             <span className="text-white font-black text-4xl">✕</span>
+          </div>
         )}
       </div>
 
       <div className="space-y-4">
-        <div className="bg-white border-2 border-black p-6 text-center shadow-sm">
-          <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Реши пример и покажи ответ на пальцах:</p>
+        <div className="bg-white border-2 border-black p-6 text-center shadow-sm relative">
+           <div className="absolute -top-3 left-4 bg-black text-white px-2 py-0.5 text-[8px] font-black uppercase tracking-widest">Задача дня</div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Реши пример и покажи ответ:</p>
           <p className="text-5xl font-black uppercase tracking-tight nyt-font leading-tight">{problem.text}</p>
         </div>
 
         <div className="bg-white border border-black p-6 text-center shadow-sm">
-          <p className="font-serif italic text-sm mb-4 text-gray-600">Направьте камеру на руку ребенка и нажмите кнопку</p>
+          {errorMessage && (
+             <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 text-[10px] font-bold uppercase">
+               ⚠️ {errorMessage}
+             </div>
+          )}
+          <p className="font-serif italic text-sm mb-4 text-gray-600">Направьте камеру на ладонь и нажмите:</p>
           <button 
             disabled={isAnalyzing}
             onClick={analyzeGesture}
-            className={`w-full p-5 font-black uppercase tracking-[0.2em] text-lg transition-all shadow-md ${
-              isAnalyzing ? 'bg-gray-100 text-gray-400' : 'bg-black text-white hover:bg-gray-900 active:scale-[0.98]'
+            className={`w-full p-5 font-black uppercase tracking-[0.2em] text-lg transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 ${
+              isAnalyzing ? 'bg-gray-100 text-gray-400' : 'bg-black text-white hover:bg-gray-900'
             }`}
           >
-            {isAnalyzing ? 'Анализирую...' : 'Проверить ответ'}
+            {isAnalyzing ? 'ДУМАЮ...' : 'ПРОВЕРИТЬ ОТВЕТ'}
           </button>
-          {feedback === 'fail' && (
+          {feedback === 'fail' && !isAnalyzing && (
             <p className="mt-4 text-[10px] font-black uppercase text-red-500 tracking-widest">
-              Попробуйте еще раз или покажите пальцы четче!
+              Попробуйте еще раз! Покажите пальцы четче.
             </p>
           )}
         </div>
