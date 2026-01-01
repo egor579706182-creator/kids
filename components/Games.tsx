@@ -288,6 +288,12 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<VideoFacingModeEnum>('user');
 
+  useEffect(() => {
+    generateProblem();
+    startStream(facingMode);
+    return () => stopStream();
+  }, [facingMode]);
+
   const stopStream = () => {
     if (videoRef.current?.srcObject) {
       (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
@@ -302,15 +308,9 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       })
       .catch(err => {
         console.error("Camera error:", err);
-        setErrorMessage("Ошибка доступа к камере. Убедитесь, что дали разрешение.");
+        setErrorMessage("Ошибка доступа к камере.");
       });
   };
-
-  useEffect(() => {
-    generateProblem();
-    startStream(facingMode);
-    return () => stopStream();
-  }, [facingMode]);
 
   const toggleCamera = () => {
     setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
@@ -319,7 +319,6 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const generateProblem = () => {
     const isAddition = Math.random() > 0.5;
     let a, b, answer;
-    
     if (isAddition) {
       answer = Math.floor(Math.random() * 5) + 1; 
       a = Math.floor(Math.random() * answer);
@@ -329,7 +328,6 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       b = Math.floor(Math.random() * (a - 1)) + 1;
       answer = a - b;
     }
-    
     setProblem({ text: `${a} ${isAddition ? '+' : '-'} ${b} = ?`, answer });
     setFeedback(null);
     setErrorMessage(null);
@@ -342,7 +340,6 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       const gain = audioCtx.createGain();
       osc.connect(gain);
       gain.connect(audioCtx.destination);
-      
       if (type === 'success') {
         osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); 
         osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.1); 
@@ -350,12 +347,11 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         osc.frequency.setValueAtTime(261.63, audioCtx.currentTime); 
         osc.frequency.exponentialRampToValueAtTime(130.81, audioCtx.currentTime + 0.2); 
       }
-      
       gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
       osc.start();
       osc.stop(audioCtx.currentTime + 0.3);
-    } catch (e) { console.warn("Audio not supported"); }
+    } catch (e) {}
   };
 
   const analyzeGesture = async () => {
@@ -379,16 +375,10 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const base64Image = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
     try {
-      const key = process.env.API_KEY;
-      
-      // Если ключа нет в окружении браузера, значит деплой еще не обновился
-      if (!key || key.length < 10) {
-        throw new Error("API-ключ не обнаружен. ПОСЛЕ обновления ключа в Vercel Settings обязательно сделайте REDEPLOY во вкладке Deployments!");
-      }
-
-      const ai = new GoogleGenAI({ apiKey: key });
+      // Прямая инициализация с использованием переменной окружения
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3-flash-preview', 
         contents: [
           {
             parts: [
@@ -403,25 +393,17 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       const match = rawText.match(/\d/);
       const aiAnswer = match ? parseInt(match[0]) : 0;
       
-      console.log("AI Answer:", aiAnswer, "Correct:", problem.answer);
-
       if (aiAnswer === problem.answer) {
         setFeedback('success');
         playFeedbackSound('success');
-        setTimeout(() => {
-          generateProblem();
-        }, 2000);
+        setTimeout(() => generateProblem(), 2000);
       } else {
         setFeedback('fail');
         playFeedbackSound('fail');
       }
     } catch (error: any) {
-      console.error("AI Analysis error:", error);
-      let msg = error.message || "Ошибка API.";
-      if (msg.includes("API key not valid") || msg.includes("API_KEY")) {
-        msg = "Ключ не активен. Сделайте REDEPLOY проекта в панели Vercel (вкладка Deployments), чтобы применить новые настройки Environment Variables.";
-      }
-      setErrorMessage(msg);
+      console.error("AI Error:", error);
+      setErrorMessage(error.message || "Ошибка API. Проверьте правильность ключа в настройках.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -431,45 +413,29 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <button onClick={onBack} className="text-[10px] font-black uppercase">← Назад</button>
-        <button 
-          onClick={toggleCamera}
-          className="text-[10px] font-black uppercase border border-black px-3 py-1 bg-white hover:bg-black hover:text-white transition-all"
-        >
+        <button onClick={toggleCamera} className="text-[10px] font-black uppercase border border-black px-3 py-1 bg-white hover:bg-black hover:text-white transition-all">
           {facingMode === 'user' ? 'Основная' : 'Селфи'}
         </button>
       </div>
       
       <div className="relative aspect-video bg-black border-4 border-black overflow-hidden shadow-2xl rounded-sm">
-        <video 
-          ref={videoRef} 
-          autoPlay 
-          playsInline 
-          muted 
-          className="w-full h-full object-cover" 
-          style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
-        />
+        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
         <canvas ref={canvasRef} className="hidden" />
         
         {isAnalyzing && (
           <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-20">
             <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
-            <div className="text-white text-[10px] font-black uppercase tracking-[0.3em] animate-pulse text-center px-4">Анализируем жест...</div>
+            <div className="text-white text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Анализ...</div>
           </div>
         )}
         
-        {feedback === 'success' && (
-          <div className="absolute inset-0 bg-green-500/30 animate-pulse border-8 border-green-500 z-10 pointer-events-none" />
-        )}
-        {feedback === 'fail' && (
-          <div className="absolute inset-0 bg-red-500/20 border-8 border-red-500 z-10 pointer-events-none flex items-center justify-center">
-             <span className="text-white font-black text-4xl">✕</span>
-          </div>
-        )}
+        {feedback === 'success' && <div className="absolute inset-0 bg-green-500/30 animate-pulse border-8 border-green-500 z-10 pointer-events-none" />}
+        {feedback === 'fail' && <div className="absolute inset-0 bg-red-500/20 border-8 border-red-500 z-10 pointer-events-none flex items-center justify-center"><span className="text-white font-black text-4xl">✕</span></div>}
       </div>
 
       <div className="space-y-4">
         <div className="bg-white border-2 border-black p-6 text-center shadow-sm relative">
-           <div className="absolute -top-3 left-4 bg-black text-white px-2 py-0.5 text-[8px] font-black uppercase tracking-widest">Задача дня</div>
+          <div className="absolute -top-3 left-4 bg-black text-white px-2 py-0.5 text-[8px] font-black uppercase tracking-widest">Задача дня</div>
           <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Реши пример и покажи ответ:</p>
           <p className="text-5xl font-black uppercase tracking-tight nyt-font leading-tight">{problem.text}</p>
         </div>
@@ -477,8 +443,7 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         <div className="bg-white border border-black p-6 text-center shadow-sm">
           {errorMessage && (
              <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold uppercase leading-relaxed text-left">
-               <span className="block mb-1">⚠️ ВНИМАНИЕ:</span> 
-               {errorMessage}
+               ⚠️ {errorMessage}
              </div>
           )}
           <p className="font-serif italic text-sm mb-4 text-gray-600">Направьте камеру на ладонь и нажмите:</p>
@@ -491,11 +456,6 @@ const FingerMathGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           >
             {isAnalyzing ? 'ДУМАЮ...' : 'ПРОВЕРИТЬ ОТВЕТ'}
           </button>
-          {feedback === 'fail' && !isAnalyzing && (
-            <p className="mt-4 text-[10px] font-black uppercase text-red-500 tracking-widest">
-              Попробуйте еще раз! Убедитесь, что ладонь хорошо освещена.
-            </p>
-          )}
         </div>
       </div>
     </div>
