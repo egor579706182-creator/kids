@@ -107,7 +107,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state }) => {
               className={`h-10 sm:h-12 border flex items-center justify-center text-[10px] font-black relative ${
                 isDone ? 'bg-black text-white border-black shadow-sm' : 
                 isSkipped ? 'bg-red-50 text-red-600 border-red-200' :
-                isCurrent ? 'bg-white border-2 border-black z-10' : 'bg-white border-gray-100 text-gray-200'
+                isCurrent ? 'bg-white border-2 border-black z-10 scale-105' : 'bg-white border-gray-100 text-gray-200'
               }`}
             >
               {d}
@@ -126,12 +126,14 @@ const Dashboard: React.FC<DashboardProps> = ({ state }) => {
 
       <section>
         {showSkipWarning && (
-          <div className="mb-10 p-6 border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-black"></div>
-            <h3 className="text-xl font-black uppercase nyt-font mb-2 leading-tight tracking-tight">Важность регулярности</h3>
-            <p className="font-serif italic text-base text-gray-900 leading-relaxed">
-              Предыдущий сеанс был пропущен. В коррекционной педагогике регулярность является фундаментом прогресса. Каждое пропущенное занятие замедляет формирование новых нейронных связей.
-            </p>
+          <div className="mb-10 p-6 border-2 border-black bg-white flex gap-6 relative overflow-hidden">
+            <div className="w-1.5 h-full bg-red-600 absolute left-0 top-0"></div>
+            <div className="flex-1">
+              <h3 className="text-xl font-black uppercase nyt-font mb-2 leading-tight tracking-tight text-red-600">Дисциплина нарушена</h3>
+              <p className="font-serif italic text-base text-gray-800 leading-relaxed">
+                Предыдущий день был пропущен. В коррекционной педагогике регулярность является фундаментом прогресса. Каждое пропущенное занятие замедляет формирование новых нейронных связей.
+              </p>
+            </div>
           </div>
         )}
 
@@ -153,23 +155,25 @@ const Dashboard: React.FC<DashboardProps> = ({ state }) => {
 
         <div className="grid grid-cols-2 gap-4 mb-14">
           <div className="p-8 bg-white border border-black shadow-sm text-center">
-            <p className="text-[10px] font-black uppercase mb-4 tracking-widest text-gray-400 border-b border-gray-50 pb-1">Пройдено дней</p>
+            <p className="text-[10px] font-black uppercase mb-4 tracking-widest text-gray-400 border-b border-gray-50 pb-1">Пройдено</p>
             <p className="text-6xl font-black nyt-font leading-none">{completedDaysCount}</p>
+            <p className="text-[10px] font-bold uppercase mt-2">Дней занятий</p>
           </div>
           <div className="p-8 bg-white border border-black shadow-sm text-center">
             <p className="text-[10px] font-black uppercase mb-4 tracking-widest text-gray-400 border-b border-gray-50 pb-1">Пропущено</p>
             <p className="text-6xl font-black nyt-font leading-none text-red-600">{skippedDaysCount}</p>
+            <p className="text-[10px] font-bold uppercase mt-2 text-red-600">Дней курса</p>
           </div>
         </div>
 
         <div className="mb-16">
-          <h3 className="text-xs font-black uppercase mb-6 border-b-2 border-black pb-1">Дополнительные занятия</h3>
+          <h3 className="text-xs font-black uppercase mb-6 border-b-2 border-black pb-1">Развивающие игры</h3>
           <button 
             onClick={() => setShowGames(true)}
-            className="w-full border-2 border-black bg-white p-8 flex items-center justify-between group hover:bg-black hover:text-white transition-all shadow-[6px_6px_0px_0px_rgba(0,0,0,0.05)]"
+            className="w-full border-2 border-black bg-white p-8 flex items-center justify-between group hover:bg-black hover:text-white transition-all shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
           >
             <div className="text-left">
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-40 group-hover:opacity-70 block mb-1">Интерактивная форма</span>
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-40 group-hover:opacity-70 block mb-1">Дополнительные занятия</span>
               <h4 className="text-2xl font-black uppercase nyt-font">Игровая Терапия</h4>
             </div>
             <div className="w-12 h-12 border-2 border-black flex items-center justify-center group-hover:border-white text-2xl transition-colors">→</div>
@@ -178,7 +182,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state }) => {
 
         <h3 className="text-xs font-black uppercase mb-6 flex items-center gap-3">
           <div className="h-[2px] w-10 bg-black"></div>
-          Календарь программы
+          Календарь прохождения
         </h3>
         {renderCalendar()}
       </section>
@@ -186,7 +190,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state }) => {
       <section className="pt-10 border-t-2 border-black border-dashed">
         <h3 className="text-xs font-black uppercase mb-10 flex items-center gap-3">
           <div className="h-[2px] w-10 bg-black"></div>
-          Показатели прогресса
+          Анализ прогресса
         </h3>
         {chartData.length > 0 ? (
           <div className="h-72 w-full bg-white border-2 border-black p-6 shadow-sm">
@@ -212,15 +216,15 @@ const Dashboard: React.FC<DashboardProps> = ({ state }) => {
           </div>
         ) : (
           <div className="py-20 text-center border-2 border-dashed border-gray-100 italic font-serif text-gray-400 bg-white">
-            Здесь будет построен график ваших успехов.
+            Здесь будет построен плавный график ваших успехов.
           </div>
         )}
       </section>
 
       <section className="pb-20">
         <h3 className="text-xs font-black uppercase mb-12 border-b-2 border-black pb-2 flex justify-between items-center">
-          <span className="text-2xl nyt-font normal-case font-black">Хроника программы</span>
-          <span className="text-[10px] tracking-widest text-gray-300 uppercase">Archive</span>
+          <span className="text-2xl nyt-font normal-case font-black">Архив прогресса</span>
+          <span className="text-[10px] tracking-widest text-gray-300 uppercase">Chronicle</span>
         </h3>
         <div className="space-y-16">
           {state.progress.length === 0 && (
@@ -241,13 +245,13 @@ const Dashboard: React.FC<DashboardProps> = ({ state }) => {
               
               {p.skipped ? (
                 <div className="p-6 bg-red-50 border border-red-100 italic font-serif text-red-900 shadow-sm">
-                  <span className="font-black uppercase text-[8px] tracking-widest block mb-2 opacity-60">Зафиксированная причина:</span>
+                  <span className="font-black uppercase text-[8px] tracking-widest block mb-2 opacity-60">Причина:</span>
                   «{p.skipReason || "Причина не указана."}»
                 </div>
               ) : (
                 <div className="bg-white p-8 border-2 border-gray-50 shadow-sm">
                   <p className="font-serif text-xl text-gray-800 leading-relaxed mb-8 first-letter:text-4xl first-letter:font-black first-letter:float-left first-letter:mr-2 first-letter:leading-none">
-                    {p.comment || "Родитель оставил этот день без письменного наблюдения."}
+                    {p.comment || "Наблюдения за этот день не зафиксированы."}
                   </p>
                   <div className="flex flex-wrap gap-2 pt-6 border-t border-gray-50">
                     {Object.values(p.scores).map((s, i) => (

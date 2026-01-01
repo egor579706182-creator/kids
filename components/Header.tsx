@@ -23,7 +23,7 @@ const Header: React.FC<HeaderProps> = ({ user, activeTab, setActiveTab }) => {
           Дневник Развития
         </h1>
         <div className="flex justify-between items-center border-y-2 border-black py-3 px-1 text-[10px] sm:text-xs uppercase font-black tracking-[0.2em]">
-          <span className="flex-1 text-left">Программа коррекции: 60 дней</span>
+          <span className="flex-1 text-left">Программа: 60 дней</span>
           <span className="flex-1 text-right italic font-serif normal-case font-normal text-sm">{dateStr}</span>
         </div>
       </div>
