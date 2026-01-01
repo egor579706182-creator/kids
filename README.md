@@ -1,11 +1,38 @@
-<div align="center">
+# Вестник Развития — Логопедический Помощник
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+Приложение для родителей детей с патологиями коммуникации. Создано в стиле газеты New York Times.
 
-  <h1>Built with AI Studio</h2>
+## Особенности
+- **60-дневный курс**: 4 упражнения в день.
+- **Сохранение прогресса**: Данные сохраняются автоматически в браузере (localStorage). Пользователь не теряет прогресс при закрытии вкладки.
+- **Аналитика**: Графики вовлеченности и история всех занятий.
+- **Отчетность**: Возможность выгрузить отчет для специалиста в текстовом формате.
+- **Дисциплина**: Система напоминаний и еженедельные записки о важности ритуалов.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## Как развернуть проект
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+### 1. Выгрузка на GitHub
+1. Создайте новый репозиторий на GitHub.
+2. Инициализируйте git в папке проекта:
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git remote add origin YOUR_REPOSITORY_URL
+   git push -u origin main
+   ```
 
-</div>
+### 2. Деплой на Vercel
+1. Зайдите на [vercel.com](https://vercel.com) и войдите через GitHub.
+2. Нажмите **"Add New"** -> **"Project"**.
+3. Выберите ваш репозиторий.
+4. **Важно:** В разделе **Environment Variables** добавьте переменную:
+   - Ключ: `API_KEY`
+   - Значение: *Ваш Google Gemini API Key* (необходим для работы AI-игр).
+5. Нажмите **Deploy**.
+
+## Технологии
+- React / TypeScript
+- Tailwind CSS
+- Recharts (для графиков)
+- LocalStorage (для хранения данных без бэкенда)
